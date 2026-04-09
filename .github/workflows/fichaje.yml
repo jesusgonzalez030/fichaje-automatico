@@ -1,0 +1,45 @@
+name: Fichaje Automatico
+
+on:
+  schedule:
+    - cron: "50 6 * * 1-5"
+    - cron: "3 14 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      accion:
+        description: "entrada o salida"
+        required: true
+        default: "entrada"
+
+jobs:
+  fichar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Instalar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Instalar Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser chromium-chromedriver
+          pip install selenium
+
+      - name: Determinar accion
+        run: |
+          HORA=$(TZ="Europe/Madrid" date +"%H")
+          if [ "$HORA" -lt "12" ]; then
+            echo "FICHAR_ACCION=entrada" >> $GITHUB_ENV
+          else
+            echo "FICHAR_ACCION=salida" >> $GITHUB_ENV
+          fi
+
+      - name: Fichar
+        env:
+          KUBY_USER: ${{ secrets.KUBY_USER }}
+          KUBY_PASS: ${{ secrets.KUBY_PASS }}
+          FICHAR_ACCION: ${{ env.FICHAR_ACCION }}
+        run: python fichar.py
