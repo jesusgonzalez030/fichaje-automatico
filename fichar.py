@@ -1,58 +1,52 @@
-import os, sys, time
-from playwright.sync_api import sync_playwright
+import os, sys, requests
+from urllib.parse import urlencode
 
-URL = "https://electraferre.kubysoft.com/login"
+BASE = "https://electraferre.kubysoft.com"
 USER = os.environ.get("KUBY_USER", "")
 PASS = os.environ.get("KUBY_PASS", "")
 ACTION = os.environ.get("FICHAR_ACCION", "entrada")
 
 def fichar():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        print("Navegando a " + URL)
-        page.goto(URL, wait_until="domcontentloaded")
-        time.sleep(3)
-        print("URL: " + page.url + " | Titulo: " + page.title())
+    session = requests.Session()
+    session.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"})
 
-        # Login con selectores correctos: id=email, name=password, button#btn-login
-        print("Esperando formulario login...")
-        page.wait_for_selector("#email", timeout=15000)
-        print("Formulario encontrado, haciendo login...")
-        page.fill("#email", USER)
-        page.fill("#password", PASS)
-        page.click("#btn-login")
-        time.sleep(4)
-        print("Login enviado - URL: " + page.url)
+    # Paso 1: Login
+    login_url = BASE + "/login/in?" + urlencode({"user": USER, "pass": PASS, "option": "in"})
+    print("Haciendo login...")
+    r = session.get(login_url)
+    print("Login status: " + str(r.status_code))
+    if r.status_code != 200:
+        print("ERROR login: " + str(r.status_code))
+        sys.exit(1)
 
-        # Esperar a que cargue el dashboard
-        page.wait_for_selector("span.hidden-xs", timeout=15000)
-        print("Dashboard cargado")
+    # Paso 2: Cargar pagina principal para obtener cookies de sesion
+    r2 = session.get(BASE + "/login")
+    print("Pagina principal status: " + str(r2.status_code))
 
-        # Abrir dropdown del usuario
-        page.evaluate("""() => {
-            const spans = document.querySelectorAll('span.hidden-xs');
-            for (const s of spans) {
-                if (s.textContent.includes('JESUS')) {
-                    let el = s;
-                    for (let i=0; i<6; i++) {
-                        el = el.parentElement;
-                        if (el.tagName === 'A') { el.click(); break; }
-                    }
-                    break;
-                }
-            }
-        }""")
-        time.sleep(2)
-        print("Dropdown abierto")
+    # Paso 3: Fichar - llamada directa al endpoint de fichaje
+    fichar_url = (
+        BASE +
+        "/node/kudaby/nodeFN/fn"
+        "?fnID=registroEntradaSalidaControlHorario"
+        "&params%5Bmpersonal%5D=0"
+        "&params%5Bempresa%5D=1"
+        "&params%5Bcentro%5D="
+        "&params%5Bcoord%5D%5Blat%5D="
+        "&params%5Bcoord%5D%5Blng%5D="
+        "&params%5Boperari%5D=11"
+        "&DBtoken=ELECT202502ERRE"
+        "&xmlConf=Control.Horarios.Schema"
+    )
+    print("Fichando " + ACTION + "...")
+    r3 = session.get(fichar_url, headers={"Referer": BASE + "/login"})
+    print("Fichaje status: " + str(r3.status_code))
+    print("Respuesta: " + r3.text[:300])
 
-        # Esperar y clicar boton de fichaje
-        css = "button.btn-controlHorarioMiniAcceso.btn-success" if ACTION == "entrada" else "button.btn-controlHorarioMiniAcceso.btn-danger"
-        page.wait_for_selector(css, timeout=10000)
-        page.click(css)
-        time.sleep(2)
+    if r3.status_code == 200:
         print("FICHADO OK: " + ACTION.upper())
-        browser.close()
+    else:
+        print("ERROR fichaje")
+        sys.exit(1)
 
 if __name__ == "__main__":
     fichar()
