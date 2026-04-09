@@ -13,52 +13,40 @@ def fichar():
         print("Navegando a " + URL)
         page.goto(URL, wait_until="domcontentloaded")
         time.sleep(3)
-        print("Titulo: " + page.title())
-        print("URL: " + page.url)
 
-        # Buscar y hacer login con email/password
-        email_count = page.locator("input[name=email]").count()
-        print("Campos email encontrados: " + str(email_count))
+        # Login siempre con usuario y password
+        print("Haciendo login con usuario: " + USER)
+        page.wait_for_selector("input[name=email]", timeout=10000)
+        page.fill("input[name=email]", USER)
+        page.fill("input[name=password]", PASS)
+        page.click("button[type=submit]")
+        time.sleep(4)
+        print("Login enviado - URL: " + page.url)
 
-        if email_count > 0:
-            page.fill("input[name=email]", USER)
-            page.fill("input[name=password]", PASS)
-            page.click("button[type=submit]")
-            time.sleep(4)
-            print("Login enviado - URL: " + page.url)
-        else:
-            # Intentar con selector alternativo
-            inputs = page.locator("input").count()
-            print("Total inputs en pagina: " + str(inputs))
-            # Forzar login via URL directa con parametros
-            page.goto("https://electraferre.kubysoft.com/dashboard", wait_until="domcontentloaded")
-            time.sleep(2)
-            print("URL tras goto dashboard: " + page.url)
-            if "login" in page.url:
-                print("Redirigido a login, buscando formulario...")
-                page.wait_for_selector("form", timeout=5000)
-                inputs2 = page.locator("input").all()
-                for inp in inputs2:
-                    tp = inp.get_attribute("type") or ""
-                    nm = inp.get_attribute("name") or ""
-                    print("Input encontrado: type=" + tp + " name=" + nm)
+        # Abrir dropdown del usuario
+        page.wait_for_selector("span.hidden-xs", timeout=10000)
+        page.evaluate("""() => {
+            const spans = document.querySelectorAll('span.hidden-xs');
+            for (const s of spans) {
+                if (s.textContent.includes('JESUS')) {
+                    let el = s;
+                    for (let i=0; i<6; i++) {
+                        el = el.parentElement;
+                        if (el.tagName === 'A') { el.click(); break; }
+                    }
+                    break;
+                }
+            }
+        }""")
+        time.sleep(2)
+        print("Dropdown abierto")
 
-        # Ver estado final
-        print("URL final: " + page.url)
-        print("Titulo final: " + page.title())
-
-        # Contar botones de fichar
-        btns = page.locator("button.btn-controlHorarioMiniAcceso").count()
-        print("Botones fichaje encontrados: " + str(btns))
-
-        if btns == 0:
-            # Mostrar todos los botones para debug
-            all_btns = page.locator("button").all()
-            for b in all_btns[:20]:
-                cls = b.get_attribute("class") or ""
-                txt = b.inner_text()[:30] if b.is_visible() else "[hidden]"
-                print("BTN: " + cls[:50] + " | " + txt)
-
+        # Clic en boton entrada o salida
+        css = "btn-success" if ACTION == "entrada" else "btn-danger"
+        page.wait_for_selector("button.btn-controlHorarioMiniAcceso." + css, timeout=10000)
+        page.click("button.btn-controlHorarioMiniAcceso." + css)
+        time.sleep(2)
+        print("FICHADO OK: " + ACTION.upper())
         browser.close()
 
 if __name__ == "__main__":
