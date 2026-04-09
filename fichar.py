@@ -12,50 +12,41 @@ def fichar():
         page = browser.new_page()
         print("Abriendo " + URL)
         page.goto(URL, wait_until="networkidle")
+        page.screenshot(path="01_inicio.png")
+        print("Titulo pagina: " + page.title())
+        print("URL actual: " + page.url)
 
-        if page.locator("input[name=email]").count() > 0:
+        # Siempre intentar login
+        try:
+            page.wait_for_selector("input[name=email]", timeout=5000)
+            print("Formulario login encontrado, haciendo login...")
             page.fill("input[name=email]", USER)
             page.fill("input[name=password]", PASS)
+            page.screenshot(path="02_antes_login.png")
             page.click("button[type=submit]")
             page.wait_for_load_state("networkidle")
-            print("Login OK")
-        else:
-            print("Ya logueado")
+            page.screenshot(path="03_despues_login.png")
+            print("Login OK - URL: " + page.url)
+        except:
+            print("Sin formulario login - URL: " + page.url)
 
-        # Abrir dropdown
-        page.evaluate("""() => {
-            const spans = document.querySelectorAll("span.hidden-xs");
-            for (const s of spans) {
-                if (s.textContent.includes("JESUS")) {
-                    let el = s;
-                    for (let i=0; i<6; i++) {
-                        el = el.parentElement;
-                        if (el.tagName === "A") { el.click(); break; }
-                    }
-                    break;
-                }
-            }
+        page.screenshot(path="04_dashboard.png")
+        print("Titulo tras login: " + page.title())
+
+        # Ver todos los botones disponibles en la pagina
+        botones = page.evaluate("""() => {
+            const btns = document.querySelectorAll("button");
+            return Array.from(btns).map(b => b.className + "|" + b.textContent.trim().substring(0,30)).join("\n");
         }""")
-        page.wait_for_timeout(2000)
-        print("Dropdown abierto")
+        print("Botones en pagina:\n" + botones)
 
-        # Clic en boton con JS
-        css_class = "btn-success" if ACTION == "entrada" else "btn-danger"
-        js = """(css) => {
-            const btn = document.querySelector("button.btn-controlHorarioMiniAcceso." + css);
-            if (btn) { btn.click(); return "OK:" + btn.textContent.trim(); }
-            const all = document.querySelectorAll("button.btn-controlHorarioMiniAcceso");
-            return "NOENCONTRADO:" + Array.from(all).map(b=>b.className+"|"+b.textContent.trim()).join(",");
-        }"""
-        result = page.evaluate(js, css_class)
-        print("Resultado: " + result)
+        # Ver si hay dropdown toggle
+        dropdown = page.evaluate("""() => {
+            const items = document.querySelectorAll(".dropdown-toggle");
+            return Array.from(items).map(i => i.tagName + "|" + i.textContent.trim().substring(0,40)).join("\n");
+        }""")
+        print("Dropdowns disponibles:\n" + dropdown)
 
-        if not result.startswith("OK"):
-            print("ERROR: boton no encontrado - " + result)
-            sys.exit(1)
-
-        page.wait_for_timeout(2000)
-        print("FICHADO: " + ACTION.upper())
         browser.close()
 
 if __name__ == "__main__":
