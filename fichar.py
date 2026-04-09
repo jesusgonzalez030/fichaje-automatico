@@ -10,10 +10,9 @@ def fichar():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
-        print(f"Abriendo {URL}...")
+        print("Abriendo " + URL)
         page.goto(URL, wait_until="networkidle")
 
-        # Login si hace falta
         if page.locator("input[name=email]").count() > 0:
             page.fill("input[name=email]", USER)
             page.fill("input[name=password]", PASS)
@@ -23,15 +22,15 @@ def fichar():
         else:
             print("Ya logueado")
 
-        # Abrir dropdown del usuario con JavaScript directo
+        # Abrir dropdown
         page.evaluate("""() => {
-            const spans = document.querySelectorAll('span.hidden-xs');
+            const spans = document.querySelectorAll("span.hidden-xs");
             for (const s of spans) {
-                if (s.textContent.trim().includes('JESUS')) {
+                if (s.textContent.includes("JESUS")) {
                     let el = s;
-                    for (let i = 0; i < 6; i++) {
+                    for (let i=0; i<6; i++) {
                         el = el.parentElement;
-                        if (el.tagName === 'A') { el.click(); break; }
+                        if (el.tagName === "A") { el.click(); break; }
                     }
                     break;
                 }
@@ -40,27 +39,23 @@ def fichar():
         page.wait_for_timeout(2000)
         print("Dropdown abierto")
 
-        # Clic en botón con JavaScript directo (igual que funciona manualmente)
-        if ACTION == "entrada":
-            css_class = "btn-success"
-        else:
-            css_class = "btn-danger"
-
-        result = page.evaluate(f"""() => {{
-            const btn = document.querySelector('button.btn-controlHorarioMiniAcceso.{css_class}');
-            if (btn) {{ btn.click(); return 'OK: ' + btn.textContent.trim(); }}
-            // Listar todos los botones disponibles para debug
-            const btns = document.querySelectorAll('button.btn-controlHorarioMiniAcceso');
-            return 'NO ENCONTRADO - disponibles: ' + Array.from(btns).map(b => b.className + '|' + b.textContent.trim()).join(', ');
-        }}""")
-        print(f"Resultado click: {{result}}")
+        # Clic en boton con JS
+        css_class = "btn-success" if ACTION == "entrada" else "btn-danger"
+        js = """(css) => {
+            const btn = document.querySelector("button.btn-controlHorarioMiniAcceso." + css);
+            if (btn) { btn.click(); return "OK:" + btn.textContent.trim(); }
+            const all = document.querySelectorAll("button.btn-controlHorarioMiniAcceso");
+            return "NOENCONTRADO:" + Array.from(all).map(b=>b.className+"|"+b.textContent.trim()).join(",");
+        }"""
+        result = page.evaluate(js, css_class)
+        print("Resultado: " + result)
 
         if not result.startswith("OK"):
-            print("ERROR: No se encontro el boton")
+            print("ERROR: boton no encontrado - " + result)
             sys.exit(1)
 
         page.wait_for_timeout(2000)
-        print(f"FICHADO: {ACTION.upper()}")
+        print("FICHADO: " + ACTION.upper())
         browser.close()
 
 if __name__ == "__main__":
