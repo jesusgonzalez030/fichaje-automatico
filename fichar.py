@@ -13,18 +13,23 @@ def fichar():
         print("Navegando a " + URL)
         page.goto(URL, wait_until="domcontentloaded")
         time.sleep(3)
+        print("URL: " + page.url + " | Titulo: " + page.title())
 
-        # Login siempre con usuario y password
-        print("Haciendo login con usuario: " + USER)
-        page.wait_for_selector("input[name=email]", timeout=10000)
-        page.fill("input[name=email]", USER)
-        page.fill("input[name=password]", PASS)
-        page.click("button[type=submit]")
+        # Login con selectores correctos: id=email, name=password, button#btn-login
+        print("Esperando formulario login...")
+        page.wait_for_selector("#email", timeout=15000)
+        print("Formulario encontrado, haciendo login...")
+        page.fill("#email", USER)
+        page.fill("#password", PASS)
+        page.click("#btn-login")
         time.sleep(4)
         print("Login enviado - URL: " + page.url)
 
+        # Esperar a que cargue el dashboard
+        page.wait_for_selector("span.hidden-xs", timeout=15000)
+        print("Dashboard cargado")
+
         # Abrir dropdown del usuario
-        page.wait_for_selector("span.hidden-xs", timeout=10000)
         page.evaluate("""() => {
             const spans = document.querySelectorAll('span.hidden-xs');
             for (const s of spans) {
@@ -41,10 +46,10 @@ def fichar():
         time.sleep(2)
         print("Dropdown abierto")
 
-        # Clic en boton entrada o salida
-        css = "btn-success" if ACTION == "entrada" else "btn-danger"
-        page.wait_for_selector("button.btn-controlHorarioMiniAcceso." + css, timeout=10000)
-        page.click("button.btn-controlHorarioMiniAcceso." + css)
+        # Esperar y clicar boton de fichaje
+        css = "button.btn-controlHorarioMiniAcceso.btn-success" if ACTION == "entrada" else "button.btn-controlHorarioMiniAcceso.btn-danger"
+        page.wait_for_selector(css, timeout=10000)
+        page.click(css)
         time.sleep(2)
         print("FICHADO OK: " + ACTION.upper())
         browser.close()
