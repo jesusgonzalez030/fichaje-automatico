@@ -1,50 +1,44 @@
-import time, os, sys
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import os, sys, time
+from playwright.sync_api import sync_playwright
 
 URL = "https://electraferre.kubysoft.com/login"
-USER = os.environ.get("KUBY_USER", "jesus@electraferre.es")
-PASS = os.environ.get("KUBY_PASS", "Jegoru")
+USER = os.environ.get("KUBY_USER", "")
+PASS = os.environ.get("KUBY_PASS", "")
 ACTION = os.environ.get("FICHAR_ACCION", "entrada")
 
 def fichar():
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    driver = webdriver.Chrome(options=options)
-    wait = WebDriverWait(driver, 15)
-    try:
-        driver.get(URL)
-        time.sleep(2)
-        try:
-            ei = wait.until(EC.presence_of_element_located((By.NAME, "email")))
-            ei.send_keys(USER)
-            driver.find_element(By.NAME, "password").send_keys(PASS)
-            driver.find_element(By.XPATH, "//button[@type='submit']").click()
-            time.sleep(3)
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        print(f"Abriendo {URL}...")
+        page.goto(URL)
+        page.wait_for_timeout(2000)
+
+        # Login si hace falta
+        if page.locator("input[name=email]").count() > 0:
+            page.fill("input[name=email]", USER)
+            page.fill("input[name=password]", PASS)
+            page.click("button[type=submit]")
+            page.wait_for_timeout(3000)
             print("Login OK")
-        except:
-            print("Ya logueado")
-        ul = wait.until(EC.element_to_be_clickable(
-            (By.XPATH, "//a[contains(@class,'dropdown-toggle')]//span[contains(text(),'JESUS GONZALEZ RUBIO')]/..")
-        ))
-        ul.click()
-        time.sleep(1)
-        css = "button.btn-controlHorarioMiniAcceso.btn-success" if ACTION=="entrada" else "button.btn-controlHorarioMiniAcceso.btn-danger"
-        btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, css)))
+        else:
+            print("Ya estaba logueado")
+
+        # Abrir dropdown del usuario
+        page.locator("a.dropdown-toggle:has(span.hidden-xs)").click()
+        page.wait_for_timeout(1000)
+        print("Dropdown abierto")
+
+        # Clic en entrada o salida
+        if ACTION == "entrada":
+            btn = page.locator("button.btn-controlHorarioMiniAcceso.btn-success")
+        else:
+            btn = page.locator("button.btn-controlHorarioMiniAcceso.btn-danger")
+
         btn.click()
-        time.sleep(2)
-        print(f"FICHADO: {ACTION.upper()}")
-    except Exception as e:
-        print(f"Error: {e}")
-        sys.exit(1)
-    finally:
-        driver.quit()
+        page.wait_for_timeout(2000)
+        print(f"FICHADO correctamente: {ACTION.upper()}")
+        browser.close()
 
 if __name__ == "__main__":
     fichar()
