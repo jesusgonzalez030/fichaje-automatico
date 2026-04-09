@@ -1,29 +1,49 @@
 import os, sys, requests
 from urllib.parse import urlencode
+from datetime import datetime
 
 BASE = "https://electraferre.kubysoft.com"
 USER = os.environ.get("KUBY_USER", "")
 PASS = os.environ.get("KUBY_PASS", "")
 ACTION = os.environ.get("FICHAR_ACCION", "entrada")
 
+def es_dia_libre():
+    hoy = datetime.now().strftime("%d/%m/%Y")
+    try:
+        with open("festivos.txt", "r") as f:
+            for linea in f:
+                linea = linea.strip()
+                if linea and not linea.startswith("#"):
+                    if linea == hoy:
+                        return True
+    except:
+        pass
+    return False
+
 def fichar():
+    hoy = datetime.now().strftime("%d/%m/%Y")
+    print("Fecha hoy: " + hoy)
+
+    if es_dia_libre():
+        print("HOY ES DIA LIBRE - No se ficha (" + hoy + ")")
+        sys.exit(0)
+
     session = requests.Session()
     session.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"})
 
-    # Paso 1: Login
+    # Login
     login_url = BASE + "/login/in?" + urlencode({"user": USER, "pass": PASS, "option": "in"})
     print("Haciendo login...")
     r = session.get(login_url)
     print("Login status: " + str(r.status_code))
     if r.status_code != 200:
-        print("ERROR login: " + str(r.status_code))
+        print("ERROR login")
         sys.exit(1)
 
-    # Paso 2: Cargar pagina principal para obtener cookies de sesion
-    r2 = session.get(BASE + "/login")
-    print("Pagina principal status: " + str(r2.status_code))
+    # Cargar sesion
+    session.get(BASE + "/login")
 
-    # Paso 3: Fichar - llamada directa al endpoint de fichaje
+    # Fichar
     fichar_url = (
         BASE +
         "/node/kudaby/nodeFN/fn"
