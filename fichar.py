@@ -23,30 +23,42 @@ def fichar():
         else:
             print("Ya logueado")
 
-        # Abrir dropdown del usuario clicando en cualquier elemento del nav con el nombre
-        page.evaluate("""
-            const spans = document.querySelectorAll("span.hidden-xs");
+        # Abrir dropdown del usuario con JavaScript directo
+        page.evaluate("""() => {
+            const spans = document.querySelectorAll('span.hidden-xs');
             for (const s of spans) {
-                if (s.textContent.trim().includes("JESUS GONZALEZ")) {
+                if (s.textContent.trim().includes('JESUS')) {
                     let el = s;
-                    for (let i=0; i<5; i++) {
+                    for (let i = 0; i < 6; i++) {
                         el = el.parentElement;
-                        if (el.tagName === "A") { el.click(); break; }
+                        if (el.tagName === 'A') { el.click(); break; }
                     }
                     break;
                 }
             }
-        """)
-        page.wait_for_timeout(1500)
+        }""")
+        page.wait_for_timeout(2000)
         print("Dropdown abierto")
 
-        # Clic en entrada o salida
+        # Clic en botón con JavaScript directo (igual que funciona manualmente)
         if ACTION == "entrada":
-            css = "button.btn-controlHorarioMiniAcceso.btn-success"
+            css_class = "btn-success"
         else:
-            css = "button.btn-controlHorarioMiniAcceso.btn-danger"
+            css_class = "btn-danger"
 
-        page.locator(css).click()
+        result = page.evaluate(f"""() => {{
+            const btn = document.querySelector('button.btn-controlHorarioMiniAcceso.{css_class}');
+            if (btn) {{ btn.click(); return 'OK: ' + btn.textContent.trim(); }}
+            // Listar todos los botones disponibles para debug
+            const btns = document.querySelectorAll('button.btn-controlHorarioMiniAcceso');
+            return 'NO ENCONTRADO - disponibles: ' + Array.from(btns).map(b => b.className + '|' + b.textContent.trim()).join(', ');
+        }}""")
+        print(f"Resultado click: {{result}}")
+
+        if not result.startswith("OK"):
+            print("ERROR: No se encontro el boton")
+            sys.exit(1)
+
         page.wait_for_timeout(2000)
         print(f"FICHADO: {ACTION.upper()}")
         browser.close()
