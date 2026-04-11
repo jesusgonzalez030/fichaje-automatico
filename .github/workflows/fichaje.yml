@@ -2,7 +2,9 @@ name: Fichaje Automatico
 
 on:
   schedule:
+    - cron: "50 5 * * 1-5"
     - cron: "50 6 * * 1-5"
+    - cron: "3 13 * * 1-5"
     - cron: "3 14 * * 1-5"
   workflow_dispatch:
 
@@ -19,14 +21,26 @@ jobs:
       - name: Instalar dependencias
         run: pip install requests
 
-      - name: Determinar accion
+      - name: Determinar accion y verificar hora
         run: |
           HORA=$(TZ="Europe/Madrid" date +"%H")
+          MINUTO=$(TZ="Europe/Madrid" date +"%M")
+          HORA_ESP=$(TZ="Europe/Madrid" date +"%H:%M")
+          echo "Hora en Espana: $HORA_ESP"
           if [ "$HORA" -lt "12" ]; then
             echo "FICHAR_ACCION=entrada" >> $GITHUB_ENV
+            if [ "$HORA" -ne "7" ] || [ "$MINUTO" -lt "40" ]; then
+              echo "Hora fuera de rango entrada: $HORA_ESP"
+              exit 0
+            fi
           else
             echo "FICHAR_ACCION=salida" >> $GITHUB_ENV
+            if [ "$HORA" -ne "15" ] || [ "$MINUTO" -gt "13" ]; then
+              echo "Hora fuera de rango salida: $HORA_ESP"
+              exit 0
+            fi
           fi
+          echo "Fichando a las: $HORA_ESP"
 
       - name: Fichar
         env:
