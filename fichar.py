@@ -26,33 +26,39 @@ def fichar():
     print("Accion: " + ACTION)
 
     if es_dia_libre():
-        print("HOY ES DIA LIBRE - No se ficha (" + hoy + ")")
+        print("HOY ES DIA LIBRE - No se ficha")
         sys.exit(0)
 
     session = requests.Session()
     session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
-        "Accept": "application/json, text/plain, */*",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "es-ES,es;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
     })
 
-    # Paso 1: GET pagina login para obtener cookies iniciales
-    print("Obteniendo cookies iniciales...")
-    r0 = session.get(BASE + "/login")
-    print("Cookies iniciales: " + str(dict(session.cookies)))
+    # Paso 1: GET pagina login para obtener cookies CSRF iniciales
+    print("Cargando pagina login...")
+    r0 = session.get(BASE + "/login", allow_redirects=True)
+    print("Login page status: " + str(r0.status_code) + " | cookies: " + str(list(session.cookies.keys())))
 
-    # Paso 2: Login
+    # Paso 2: Login con allow_redirects=True para seguir la sesion
     login_url = BASE + "/login/in?" + urlencode({"user": USER, "pass": PASS, "option": "in"})
     print("Haciendo login...")
-    r1 = session.get(login_url)
-    print("Login status: " + str(r1.status_code))
+    r1 = session.get(login_url, allow_redirects=True)
+    print("Login status: " + str(r1.status_code) + " | url final: " + r1.url)
     print("Cookies tras login: " + str(dict(session.cookies)))
 
-    # Paso 3: Cargar dashboard para establecer sesion completa
-    print("Cargando dashboard...")
-    r2 = session.get(BASE + "/login")
+    # Paso 3: GET al dashboard para consolidar sesion
+    print("Consolidando sesion...")
+    r2 = session.get(BASE + "/login", allow_redirects=True)
     print("Dashboard status: " + str(r2.status_code))
-    print("Cookies tras dashboard: " + str(dict(session.cookies)))
+    print("Cookies consolidadas: " + str(dict(session.cookies)))
+
+    # Verificar que tenemos sesion valida buscando el ID de usuario en la respuesta
+    if "JESUS" not in r2.text and "jesus" not in r2.text.lower():
+        print("ADVERTENCIA: No se detecta sesion de usuario en la pagina")
 
     # Paso 4: Fichar
     fichar_url = (
@@ -69,25 +75,30 @@ def fichar():
         "&xmlConf=Control.Horarios.Schema"
     )
     print("Fichando " + ACTION + "...")
-    r3 = session.get(fichar_url, headers={"Referer": BASE + "/login"})
+    r3 = session.get(fichar_url, headers={"Referer": BASE + "/login"}, allow_redirects=True)
     print("Fichaje status: " + str(r3.status_code))
-    print("Respuesta completa: " + r3.text[:500])
 
-    if r3.status_code == 200:
-        import json
-        try:
-            data = r3.json()
-            idproc = data.get("recordset", {}).get("idproc", "desconocido")
-            errores = data.get("recordset", {}).get("errores", [])
-            print("Tipo fichaje: " + idproc)
-            if errores:
-                print("ERRORES: " + str(errores))
-                sys.exit(1)
-            print("FICHADO OK: " + idproc.upper())
-        except:
-            print("FICHADO OK (sin JSON): " + ACTION.upper())
-    else:
-        print("ERROR fichaje status: " + str(r3.status_code))
+    try:
+        data = r3.json()
+        idproc = data.get("recordset", {}).get("idproc", "desconocido")
+        id_user = data.get("Params", {}).get("params", {}).get("IDUser", -1)
+        errores = data.get("recordset", {}).get("errores", [])
+        result = data.get("recordset", {}).get("result", [])
+        print("IDUser en respuesta: " + str(id_user))
+        print("Tipo fichaje: " + str(idproc))
+        print("Errores: " + str(errores))
+        print("Resultado: " + str(result))
+
+        if int(id_user) == -1:
+            print("ERROR CRITICO: Sesion no establecida (IDUser=-1) - el fichaje NO se ha registrado")
+            sys.exit(1)
+        if errores:
+            print("ERROR en fichaje: " + str(errores))
+            sys.exit(1)
+        print("FICHADO OK: " + str(idproc).upper())
+    except Exception as e:
+        print("Error parseando respuesta: " + str(e))
+        print("Respuesta raw: " + r3.text[:300])
         sys.exit(1)
 
 if __name__ == "__main__":
