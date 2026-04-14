@@ -18,8 +18,11 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Instalar dependencias
-        run: pip install requests
+      - name: Instalar playwright
+        run: |
+          pip install playwright
+          playwright install chromium
+          playwright install-deps chromium
 
       - name: Determinar accion
         run: |
