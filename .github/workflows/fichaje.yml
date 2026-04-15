@@ -1,11 +1,6 @@
-name: Fichaje Automatico
+name: Fichaje Manual
 
 on:
-  schedule:
-    - cron: "50 5 * * 1-5"
-    - cron: "50 6 * * 1-5"
-    - cron: "3 13 * * 1-5"
-    - cron: "3 14 * * 1-5"
   workflow_dispatch:
 
 jobs:
@@ -13,33 +8,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Instalar playwright
         run: |
           pip install playwright
           playwright install chromium
           playwright install-deps chromium
-
-      - name: Determinar accion
-        run: |
-          HORA=$(TZ="Europe/Madrid" date +"%H")
-          HORA_ESP=$(TZ="Europe/Madrid" date +"%H:%M")
-          echo "Hora en Espana: $HORA_ESP"
-          if [ "$HORA" -lt "12" ]; then
-            echo "FICHAR_ACCION=entrada" >> $GITHUB_ENV
-            echo "Accion: ENTRADA"
-          else
-            echo "FICHAR_ACCION=salida" >> $GITHUB_ENV
-            echo "Accion: SALIDA"
-          fi
-
       - name: Fichar
         env:
           KUBY_USER: ${{ secrets.KUBY_USER }}
           KUBY_PASS: ${{ secrets.KUBY_PASS }}
-          FICHAR_ACCION: ${{ env.FICHAR_ACCION }}
+          FICHAR_ACCION: ${{ github.event.inputs.accion || 'entrada' }}
         run: python fichar.py
