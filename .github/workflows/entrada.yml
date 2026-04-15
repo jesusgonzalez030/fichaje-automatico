@@ -1,0 +1,27 @@
+name: Fichaje Entrada
+
+on:
+  schedule:
+    - cron: "50 5 * * 1-5"
+    - cron: "50 6 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  entrada:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Instalar playwright
+        run: |
+          pip install playwright
+          playwright install chromium
+          playwright install-deps chromium
+      - name: Fichar Entrada
+        env:
+          KUBY_USER: ${{ secrets.KUBY_USER }}
+          KUBY_PASS: ${{ secrets.KUBY_PASS }}
+          FICHAR_ACCION: entrada
+        run: python fichar.py
