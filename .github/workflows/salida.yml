@@ -1,0 +1,27 @@
+name: Fichaje Salida
+
+on:
+  schedule:
+    - cron: "3 13 * * 1-5"
+    - cron: "3 14 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  salida:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Instalar playwright
+        run: |
+          pip install playwright
+          playwright install chromium
+          playwright install-deps chromium
+      - name: Fichar Salida
+        env:
+          KUBY_USER: ${{ secrets.KUBY_USER }}
+          KUBY_PASS: ${{ secrets.KUBY_PASS }}
+          FICHAR_ACCION: salida
+        run: python fichar.py
