@@ -2,8 +2,22 @@ name: Fichaje Salida
 
 on:
   schedule:
+    - cron: "58 12 * * 1-5"
     - cron: "3 13 * * 1-5"
+    - cron: "8 13 * * 1-5"
+    - cron: "13 13 * * 1-5"
+    - cron: "18 13 * * 1-5"
+    - cron: "23 13 * * 1-5"
+    - cron: "28 13 * * 1-5"
+    - cron: "33 13 * * 1-5"
+    - cron: "58 13 * * 1-5"
     - cron: "3 14 * * 1-5"
+    - cron: "8 14 * * 1-5"
+    - cron: "13 14 * * 1-5"
+    - cron: "18 14 * * 1-5"
+    - cron: "23 14 * * 1-5"
+    - cron: "28 14 * * 1-5"
+    - cron: "33 14 * * 1-5"
   workflow_dispatch:
 
 jobs:
