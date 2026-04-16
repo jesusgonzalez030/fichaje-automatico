@@ -7,47 +7,30 @@ USER = os.environ.get("KUBY_USER", "")
 PASS = os.environ.get("KUBY_PASS", "")
 ACTION = os.environ.get("FICHAR_ACCION", "entrada")
 
-# Hora objetivo en minutos desde medianoche (hora España)
-HORA_ENTRADA = 7 * 60 + 50   # 07:50 = 470 minutos
-HORA_SALIDA = 15 * 60 + 3    # 15:03 = 903 minutos
-MARGEN = 45  # minutos de margen
-
-def hora_espana_minutos():
-    import subprocess
-    result = subprocess.run(
-        ['date', '-d', 'TZ="Europe/Madrid"', '+%H:%M'],
-        capture_output=True, text=True
-    )
-    if result.returncode != 0:
-        # Fallback: usar TZ env
-        import os
-        os.environ['TZ'] = 'Europe/Madrid'
-        time.tzset()
-        now = datetime.now()
-        return now.hour * 60 + now.minute
-    parts = result.stdout.strip().split(':')
-    return int(parts[0]) * 60 + int(parts[1])
-
 def es_hora_correcta():
-    try:
-        import os
-        os.environ['TZ'] = 'Europe/Madrid'
-        time.tzset()
-        now = datetime.now()
-        minutos = now.hour * 60 + now.minute
-        hora_obj = HORA_ENTRADA if ACTION == "entrada" else HORA_SALIDA
-        diferencia = abs(minutos - hora_obj)
-        print(f"Hora Espana: {now.strftime('%H:%M')} | Objetivo: {hora_obj//60:02d}:{hora_obj%60:02d} | Diferencia: {diferencia} min")
-        if diferencia > MARGEN:
-            print(f"FUERA DE MARGEN ({diferencia} min > {MARGEN} min) - NO FICHAR")
-            return False
-        return True
-    except Exception as e:
-        print(f"Error verificando hora: {e} - fichando igualmente")
-        return True
+    os.environ['TZ'] = 'Europe/Madrid'
+    time.tzset()
+    now = datetime.now()
+    h = now.hour
+    m = now.minute
+    print(f"Hora Espana: {h:02d}:{m:02d} | Accion: {ACTION}")
+
+    if ACTION == "entrada":
+        # Solo ficha entre 07:50 y 08:00
+        if h == 7 and m >= 50:
+            return True
+        if h == 8 and m == 0:
+            return True
+        print(f"FUERA DE MARGEN entrada (solo 07:50-08:00) - NO FICHAR")
+        return False
+    else:
+        # Solo ficha entre 15:03 y 15:30
+        if h == 15 and m >= 3 and m <= 30:
+            return True
+        print(f"FUERA DE MARGEN salida (solo 15:03-15:30) - NO FICHAR")
+        return False
 
 def es_dia_libre():
-    import os
     hoy = datetime.now().strftime("%d/%m/%Y")
     try:
         with open(os.path.expanduser("~/festivos.txt"), "r") as f:
@@ -61,7 +44,6 @@ def es_dia_libre():
     return False
 
 def fichar():
-    import os
     os.environ['TZ'] = 'Europe/Madrid'
     time.tzset()
     hoy = datetime.now().strftime("%d/%m/%Y")
@@ -116,7 +98,7 @@ def fichar():
             btn_salida.click()
             print("FICHADO OK: SALIDA")
         else:
-            print("AVISO: Boton no visible - ya fichado o jornada completa")
+            print("AVISO: Boton no visible - ya fichado")
         time.sleep(2)
         browser.close()
 
